@@ -1,7 +1,7 @@
 import { body, param, query, validationResult } from 'express-validator';
 
 // Handle validation errors middleware
-const handleValidationErrors = (req, res, next) => {
+export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({
@@ -14,7 +14,7 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // Client validations
-const validateClient = [
+export const validateClient = [
   body('name')
     .isLength({ min: 2, max: 100 })
     .withMessage('El nombre debe tener entre 2 y 100 caracteres')
@@ -35,7 +35,7 @@ const validateClient = [
     .withMessage('La edad debe ser un número entre 18 y 120')
 ];
 
-const validateUpdateClient = [
+export const validateUpdateClient = [
   body('name')
     .optional()
     .isLength({ min: 2, max: 100 })
@@ -62,7 +62,7 @@ const validateUpdateClient = [
 ];
 
 // Reservation validations
-const validateReservation = [
+export const validateReservation = [
   body('clientId')
     .isMongoId()
     .withMessage('El ID del cliente debe ser válido'),
@@ -96,7 +96,7 @@ const validateReservation = [
     .escape()
 ];
 
-const validateUpdateReservation = [
+export const validateUpdateReservation = [
   body('clientId')
     .optional()
     .isMongoId()
@@ -134,20 +134,20 @@ const validateUpdateReservation = [
 ];
 
 // Parameter validations
-const validateMongoId = [
+export const validateMongoId = [
   param('id')
     .isMongoId()
     .withMessage('El ID debe ser un ID de MongoDB válido')
 ];
 
-const validateClientId = [
+export const validateClientId = [
   param('clientId')
     .isMongoId()
     .withMessage('El ID del cliente debe ser un ID de MongoDB válido')
 ];
 
 // Query validations
-const validatePagination = [
+export const validatePagination = [
   query('page')
     .optional()
     .isInt({ min: 1 })
@@ -158,7 +158,7 @@ const validatePagination = [
     .withMessage('El límite debe ser un número entero entre 1 y 100')
 ];
 
-const validateReservationFilters = [
+export const validateReservationFilters = [
   query('status')
     .optional()
     .isIn(['Pendiente', 'Confirmada', 'En proceso', 'Completada', 'Cancelada'])
@@ -172,15 +172,3 @@ const validateReservationFilters = [
     .isMongoId()
     .withMessage('El ID del cliente debe ser válido')
 ];
-
-export {
-  handleValidationErrors,
-  validateClient,
-  validateUpdateClient,
-  validateReservation,
-  validateUpdateReservation,
-  validateMongoId,
-  validateClientId,
-  validatePagination,
-  validateReservationFilters
-};

@@ -69,20 +69,10 @@ const getClientById = async (req, res) => {
 // Create new client
 const createClient = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Errores de validación',
-        errors: errors.array()
-      });
-    }
-
     const { name, email, password, phone, age } = req.body;
 
     // Check if client already exists
-    const existingClient = await Client.findByEmail(email);
+    const existingClient = await Client.findOne({ email });
     if (existingClient) {
       return res.status(409).json({
         success: false,
@@ -101,10 +91,14 @@ const createClient = async (req, res) => {
 
     await client.save();
 
+    // Return client without password
+    const clientResponse = client.toObject();
+    delete clientResponse.password;
+
     res.status(201).json({
       success: true,
       message: 'Cliente creado exitosamente',
-      data: client
+      data: clientResponse
     });
   } catch (error) {
     if (error.code === 11000) {
@@ -113,6 +107,20 @@ const createClient = async (req, res) => {
         message: 'Ya existe un cliente con este email'
       });
     }
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Errores de validación',
+        errors: validationErrors
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Error al crear cliente',
@@ -124,39 +132,31 @@ const createClient = async (req, res) => {
 // Update client
 const updateClient = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Errores de validación',
-        errors: errors.array()
-      });
-    }
-
     const { name, email, password, phone, age } = req.body;
     const clientId = req.params.id;
 
     // Check if email is already used by another client
-    const existingClient = await Client.findOne({ 
-      email, 
-      _id: { $ne: clientId } 
-    });
-    
-    if (existingClient) {
-      return res.status(409).json({
-        success: false,
-        message: 'Ya existe otro cliente con este email'
+    if (email) {
+      const existingClient = await Client.findOne({ 
+        email, 
+        _id: { $ne: clientId } 
       });
+      
+      if (existingClient) {
+        return res.status(409).json({
+          success: false,
+          message: 'Ya existe otro cliente con este email'
+        });
+      }
     }
 
     // Prepare update data
-    const updateData = { name, email, phone, age };
-    
-    // Only update password if provided
-    if (password) {
-      updateData.password = password;
-    }
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (password) updateData.password = password;
+    if (phone) updateData.phone = phone;
+    if (age !== undefined) updateData.age = age;
 
     const client = await Client.findByIdAndUpdate(
       clientId,
@@ -186,12 +186,27 @@ const updateClient = async (req, res) => {
         message: 'ID de cliente inválido'
       });
     }
+    
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
         message: 'Ya existe otro cliente con este email'
       });
     }
+    
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => ({
+        field: err.path,
+        message: err.message
+      }));
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Errores de validación',
+        errors: validationErrors
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: 'Error al actualizar cliente',
@@ -254,9 +269,12 @@ const getClientStats = async (req, res) => {
     const stats = {
       totalReservations: reservations.length,
       pendingReservations: reservations.filter(r => r.status === 'Pendiente').length,
+      confirmedReservations: reservations.filter(r => r.status === 'Confirmada').length,
+      inProgressReservations: reservations.filter(r => r.status === 'En proceso').length,
       completedReservations: reservations.filter(r => r.status === 'Completada').length,
       cancelledReservations: reservations.filter(r => r.status === 'Cancelada').length,
-      serviceBreakdown: {}
+      serviceBreakdown: {},
+      recentReservations: reservations.slice(-5) // Last 5 reservations
     };
 
     // Count services
@@ -290,7 +308,7 @@ const getClientStats = async (req, res) => {
   }
 };
 
-export default  {
+export default {
   getAllClients,
   getClientById,
   createClient,
