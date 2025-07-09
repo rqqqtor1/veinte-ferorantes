@@ -1,6 +1,5 @@
-const Reservation = require('../models/Reservation');
-const Client = require('../models/Client');
-const { validationResult } = require('express-validator');
+import Reservation from '../models/Reservation.js';
+import Client from '../models/Client.js';
 
 // Get all reservations
 const getAllReservations = async (req, res) => {
@@ -77,16 +76,6 @@ const getReservationById = async (req, res) => {
 // Create new reservation
 const createReservation = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Errores de validación',
-        errors: errors.array()
-      });
-    }
-
     const { clientId, vehicle, service, status, serviceDate, notes } = req.body;
 
     // Verify client exists
@@ -120,12 +109,6 @@ const createReservation = async (req, res) => {
       data: populatedReservation
     });
   } catch (error) {
-    if (error.statusCode === 404) {
-      return res.status(404).json({
-        success: false,
-        message: error.message
-      });
-    }
     res.status(500).json({
       success: false,
       message: 'Error al crear reserva',
@@ -137,16 +120,6 @@ const createReservation = async (req, res) => {
 // Update reservation
 const updateReservation = async (req, res) => {
   try {
-    // Check for validation errors
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Errores de validación',
-        errors: errors.array()
-      });
-    }
-
     const { clientId, vehicle, service, status, serviceDate, notes } = req.body;
     const reservationId = req.params.id;
 
@@ -178,9 +151,18 @@ const updateReservation = async (req, res) => {
       }
     }
 
+    // Prepare update data
+    const updateData = {};
+    if (clientId) updateData.clientId = clientId;
+    if (vehicle) updateData.vehicle = vehicle;
+    if (service) updateData.service = service;
+    if (status) updateData.status = status;
+    if (serviceDate) updateData.serviceDate = serviceDate;
+    if (notes !== undefined) updateData.notes = notes;
+
     const reservation = await Reservation.findByIdAndUpdate(
       reservationId,
-      { clientId, vehicle, service, status, serviceDate, notes },
+      updateData,
       { new: true, runValidators: true }
     ).populate('clientId', 'name email phone');
 
@@ -194,12 +176,6 @@ const updateReservation = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'ID de reserva inválido'
-      });
-    }
-    if (error.statusCode === 404) {
-      return res.status(404).json({
-        success: false,
-        message: error.message
       });
     }
     res.status(500).json({
@@ -413,7 +389,7 @@ const getReservationStats = async (req, res) => {
   }
 };
 
-module.exports = {
+export default {
   getAllReservations,
   getReservationById,
   createReservation,

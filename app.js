@@ -1,7 +1,10 @@
 import express from "express";
 import "./database.js"
+import fs from "fs";
 import clientRoutes from "./src/routes/Clientroutes.js";
 import reservationRoutes from "./src/routes/Reservationroutes.js"
+import path from 'path';
+import swaggerUI from 'swagger-ui-express';
 const app = express();
 
 
@@ -15,5 +18,6 @@ const swaggerDocument = JSON.parse(
 // Rutas
 app.use("/api/clients", clientRoutes);
 app.use("api/reservation", reservationRoutes)
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 export default app;

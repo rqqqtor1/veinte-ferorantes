@@ -1,6 +1,5 @@
-const Client = require('../models/Client');
-const Reservation = require('../models/Reservation');
-const { validationResult } = require('express-validator');
+import Client from '../models/Client.js';
+import Reservation from '../models/Reservation.js';
 
 // Get all clients
 const getAllClients = async (req, res) => {
@@ -291,7 +290,7 @@ const getClientStats = async (req, res) => {
   }
 };
 
-module.exports = {
+export default  {
   getAllClients,
   getClientById,
   createClient,

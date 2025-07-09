@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const reservationSchema = new mongoose.Schema({
   clientId: {
@@ -35,6 +35,7 @@ const reservationSchema = new mongoose.Schema({
     type: Date,
     validate: {
       validator: function(value) {
+        // If serviceDate is provided, it should be in the future
         if (value) {
           return value > new Date();
         }
@@ -52,6 +53,7 @@ const reservationSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Virtual for client information
 reservationSchema.virtual('client', {
   ref: 'Client',
   localField: 'clientId',
@@ -59,26 +61,32 @@ reservationSchema.virtual('client', {
   justOne: true
 });
 
+// Static method to find by client
 reservationSchema.statics.findByClient = function(clientId) {
   return this.find({ clientId }).populate('clientId', 'name email phone');
 };
 
+// Static method to find by status
 reservationSchema.statics.findByStatus = function(status) {
   return this.find({ status }).populate('clientId', 'name email phone');
 };
 
+// Static method to find by service type
 reservationSchema.statics.findByService = function(service) {
   return this.find({ service }).populate('clientId', 'name email phone');
 };
 
+// Instance method to check if reservation can be cancelled
 reservationSchema.methods.canBeCancelled = function() {
   return ['Pendiente', 'Confirmada'].includes(this.status);
 };
 
+// Instance method to check if reservation can be modified
 reservationSchema.methods.canBeModified = function() {
   return ['Pendiente', 'Confirmada'].includes(this.status);
 };
 
+// Pre-save middleware to validate business rules
 reservationSchema.pre('save', async function(next) {
   // Check if client exists
   if (this.isNew || this.isModified('clientId')) {
@@ -91,18 +99,22 @@ reservationSchema.pre('save', async function(next) {
     }
   }
 
+  // If status is being changed to 'Completada', ensure serviceDate is set
   if (this.isModified('status') && this.status === 'Completada' && !this.serviceDate) {
     this.serviceDate = new Date();
   }
 
   next();
 });
+
+// Indexes for better performance
 reservationSchema.index({ clientId: 1 });
 reservationSchema.index({ status: 1 });
 reservationSchema.index({ service: 1 });
 reservationSchema.index({ serviceDate: 1 });
 reservationSchema.index({ createdAt: -1 });
 
+// Compound index for common queries
 reservationSchema.index({ clientId: 1, status: 1 });
 
-module.exports = mongoose.model('Reservation', reservationSchema);
+export default mongoose.model('Reservation', reservationSchema);

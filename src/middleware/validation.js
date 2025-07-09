@@ -1,4 +1,17 @@
-const { body, param, query } = require('express-validator');
+import { body, param, query, validationResult } from 'express-validator';
+
+// Handle validation errors middleware
+const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Errores de validación',
+      errors: errors.array()
+    });
+  }
+  next();
+};
 
 // Client validations
 const validateClient = [
@@ -160,137 +173,8 @@ const validateReservationFilters = [
     .withMessage('El ID del cliente debe ser válido')
 ];
 
-// Custom validation middleware for file uploads (if needed in the future)
-const validateFile = (fieldName, allowedTypes = [], maxSize = 5 * 1024 * 1024) => {
-  return (req, res, next) => {
-    if (!req.files || !req.files[fieldName]) {
-      return next();
-    }
-
-    const file = req.files[fieldName];
-    
-    // Check file type
-    if (allowedTypes.length > 0 && !allowedTypes.includes(file.mimetype)) {
-      return res.status(400).json({
-        success: false,
-        message: `Tipo de archivo no permitido. Tipos permitidos: ${allowedTypes.join(', ')}`
-      });
-    }
-
-    // Check file size
-    if (file.size > maxSize) {
-      return res.status(400).json({
-        success: false,
-        message: `El archivo es demasiado grande. Tamaño máximo: ${maxSize / (1024 * 1024)}MB`
-      });
-    }
-
-    next();
-  };
-};
-
-// Business rules validations
-const validateBusinessRules = {
-  // Check if client can make a reservation
-  canMakeReservation: async (req, res, next) => {
-    try {
-      const { clientId } = req.body;
-      const Reservation = require('../models/Reservation');
-      
-      // Check if client has pending reservations (business rule: max 3 pending)
-      const pendingReservations = await Reservation.countDocuments({
-        clientId,
-        status: 'Pendiente'
-      });
-
-      if (pendingReservations >= 3) {
-        return res.status(400).json({
-          success: false,
-          message: 'El cliente no puede tener más de 3 reservas pendientes'
-        });
-      }
-
-      next();
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al validar reglas de negocio',
-        error: error.message
-      });
-    }
-  },
-
-  // Check if reservation can be modified
-  canModifyReservation: async (req, res, next) => {
-    try {
-      const { id } = req.params;
-      const Reservation = require('../models/Reservation');
-      
-      const reservation = await Reservation.findById(id);
-      if (!reservation) {
-        return res.status(404).json({
-          success: false,
-          message: 'Reserva no encontrada'
-        });
-      }
-
-      if (!reservation.canBeModified()) {
-        return res.status(400).json({
-          success: false,
-          message: 'No se puede modificar una reserva en estado: ' + reservation.status
-        });
-      }
-
-      next();
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: 'Error al validar reglas de negocio',
-        error: error.message
-      });
-    }
-  }
-};
-
-// Sanitization helpers
-const sanitizeHtml = (req, res, next) => {
-  // Additional HTML sanitization if needed
-  next();
-};
-
-const rateLimitByUser = (maxRequests = 100, windowMs = 15 * 60 * 1000) => {
-  const requests = new Map();
-  
-  return (req, res, next) => {
-    const identifier = req.ip || 'unknown';
-    const now = Date.now();
-    
-    if (!requests.has(identifier)) {
-      requests.set(identifier, { count: 1, resetTime: now + windowMs });
-      return next();
-    }
-    
-    const userRequests = requests.get(identifier);
-    
-    if (now > userRequests.resetTime) {
-      userRequests.count = 1;
-      userRequests.resetTime = now + windowMs;
-      return next();
-    }
-    
-    if (userRequests.count >= maxRequests) {
-      return res.status(429).json({
-        success: false,
-        message: 'Demasiadas solicitudes. Intenta de nuevo más tarde.'
-      });
-    }
-    
-    userRequests.count++;
-    next();
-  };
-};
-
-module.exports = {
+export {
+  handleValidationErrors,
   validateClient,
   validateUpdateClient,
   validateReservation,
@@ -298,9 +182,5 @@ module.exports = {
   validateMongoId,
   validateClientId,
   validatePagination,
-  validateReservationFilters,
-  validateFile,
-  validateBusinessRules,
-  sanitizeHtml,
-  rateLimitByUser
+  validateReservationFilters
 };
