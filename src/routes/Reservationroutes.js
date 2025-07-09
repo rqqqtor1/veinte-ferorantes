@@ -1,5 +1,5 @@
 import express from 'express';
-import reservationController from '../controllers/reservationController.js';
+import reservationController from '../controllers/Reservationcontroller.js';
 import { validateReservation, validateUpdateReservation, handleValidationErrors } from '../middleware/validation.js';
 
 const router = express.Router();
